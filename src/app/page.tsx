@@ -9,7 +9,7 @@ export default function Home() {
           <span className="text-xl font-bold tracking-tight">JALANIN</span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-semibold text-muted-ink md:flex">
-          <a href="#peta" className="transition-colors hover:text-ink">Peta kondisi</a>
+          <a href="/map" className="transition-colors hover:text-ink">Peta kondisi</a>
           <a href="#cara-kerja" className="transition-colors hover:text-ink">Cara kerja</a>
           <a href="#laporan" className="transition-colors hover:text-ink">Laporan terbaru</a>
         </nav>
@@ -26,7 +26,7 @@ export default function Home() {
             <h1 className="max-w-190 text-5xl font-bold leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">Jalan aman,<br /><span className="text-road-blue">kota nyaman.</span></h1>
             <p className="mt-7 max-w-140 text-lg leading-8 text-muted-ink">Temukan kondisi jalan, laporkan kerusakan dengan mudah, dan bantu kota menentukan mana yang perlu ditangani lebih dulu.</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="#peta" className="inline-flex items-center justify-center gap-3 rounded-full bg-signal-orange px-6 py-4 font-bold text-white transition-transform hover:-translate-y-0.5">Lihat peta kondisi <span aria-hidden="true">-&gt;</span></a>
+              <a href="/map" className="inline-flex items-center justify-center gap-3 rounded-full bg-signal-orange px-6 py-4 font-bold text-white transition-transform hover:-translate-y-0.5">Lihat peta kondisi <span aria-hidden="true">-&gt;</span></a>
               <a href="#mulai" className="inline-flex items-center justify-center rounded-full border border-line bg-surface px-6 py-4 font-bold text-ink transition-colors hover:border-ink">Buat laporan</a>
             </div>
             <p className="mt-5 text-sm text-muted-ink">Gratis untuk digunakan. Data publik, proses transparan.</p>
