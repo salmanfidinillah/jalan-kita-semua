@@ -1,5 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,6 +20,18 @@ export function getFirebaseAuth() {
     throw new Error("Firebase belum dikonfigurasi. Isi environment variables terlebih dahulu.");
   }
 
-  const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  const app = getFirebaseApp();
   return getAuth(app);
+}
+
+export function getFirebaseApp() {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase belum dikonfigurasi. Isi environment variables terlebih dahulu.");
+  }
+
+  return getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+}
+
+export function getFirebaseDb() {
+  return getFirestore(getFirebaseApp());
 }

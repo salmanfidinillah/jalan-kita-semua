@@ -9,6 +9,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
+import { createUserProfile } from "@/lib/firebase/user-profile";
 
 type AuthMode = "login" | "register";
 
@@ -46,6 +47,10 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       if (isRegister && displayName.trim()) {
         await updateProfile(credential.user, { displayName: displayName.trim() });
+      }
+
+      if (isRegister) {
+        await createUserProfile(credential.user);
       }
 
       router.push("/dashboard");
