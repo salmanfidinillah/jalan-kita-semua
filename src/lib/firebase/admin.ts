@@ -39,3 +39,10 @@ export function getAdminDb() {
 export function getAdminStorage() {
   return getStorage(getAdminApp());
 }
+
+export async function assertAdmin(uid: string) {
+  const profile = await getAdminDb().collection("users").doc(uid).get();
+  if (!profile.exists || profile.data()?.role !== "admin" || profile.data()?.isActive === false) {
+    throw new Error("FORBIDDEN");
+  }
+}
