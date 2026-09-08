@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #172026;
+  --muted-ink: #5b6468;
+  --paper: #f6f4ef;
+  --surface: #ffffff;
+  --line: #d9d6ce;
+  --road-blue: #2d6871;
+  --signal-orange: #d66a3d;
+  --leaf-green: #3e7854;
+  --warning-yellow: #d3a62a;
+  --danger-red: #b8493f;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-muted-ink: var(--muted-ink);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-road-blue: var(--road-blue);
+  --color-signal-orange: var(--signal-orange);
+  --color-leaf-green: var(--leaf-green);
+  --color-warning-yellow: var(--warning-yellow);
+  --color-danger-red: var(--danger-red);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Public Sans", "Trebuchet MS", sans-serif;
+  margin: 0;
+}
+
+a { color: inherit; text-decoration: none; }
+button, a { -webkit-tap-highlight-color: transparent; }
