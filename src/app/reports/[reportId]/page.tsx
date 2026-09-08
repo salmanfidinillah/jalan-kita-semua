@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getIdToken, onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from "@/lib/firebase/client";
@@ -20,12 +20,28 @@ type Report = {
   status?: string;
 };
 
+type StatusHistory = {
+  id: string;
+  fromStatus?: string | null;
+  toStatus?: string;
+  note?: string;
+  createdAt?: { seconds?: number };
+};
+
+const statusLabels: Record<string, string> = {
+  REPORTED: "Dilaporkan",
+  VERIFIED: "Terverifikasi",
+  IN_PROGRESS: "Sedang ditangani",
+  RESOLVED: "Selesai",
+};
+
 const typeOptions = ["POTHOLE", "CRACK", "BROKEN_SURFACE", "FLOODING", "ROAD_OBSTRUCTION", "OTHER"];
 const severityOptions = ["LOW", "MEDIUM", "HIGH"];
 
 export default function ReportDetailPage() {
   const params = useParams<{ reportId: string }>();
   const [report, setReport] = useState<Report | null>(null);
+  const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -38,14 +54,19 @@ export default function ReportDetailPage() {
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), setUser);
-    getDoc(doc(getFirebaseDb(), "reports", params.reportId))
-      .then((snapshot) => {
+    const reportRef = doc(getFirebaseDb(), "reports", params.reportId);
+    Promise.all([
+      getDoc(reportRef),
+      getDocs(query(collection(reportRef, "statusHistory"), orderBy("createdAt", "asc"))),
+    ])
+      .then(([snapshot, historySnapshot]) => {
         if (!snapshot.exists()) {
           setError("Laporan tidak ditemukan.");
           return;
         }
         const nextReport = snapshot.data() as Report;
         setReport(nextReport);
+        setStatusHistory(historySnapshot.docs.map((history) => ({ id: history.id, ...history.data() } as StatusHistory)));
         setReviewType(nextReport.aiAnalysis?.damageType || nextReport.damage?.type || "OTHER");
         setReviewSeverity(nextReport.aiAnalysis?.severity || nextReport.damage?.severity || "LOW");
         setReviewDescription(nextReport.aiAnalysis?.description || nextReport.damage?.description || "");
@@ -129,6 +150,7 @@ export default function ReportDetailPage() {
         {isOwner && report.aiAnalysis?.status === "COMPLETED" && <form className="mt-4 rounded-2xl border border-line bg-surface p-5" onSubmit={handleReview}><h2 className="text-xl font-bold">Periksa hasil AI</h2><p className="mt-2 text-sm leading-6 text-muted-ink">Koreksi hasil sebelum menjadi data final laporan.</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Jenis kerusakan<select className="mt-2 h-12 w-full rounded-xl border border-line bg-paper px-3 font-normal" value={reviewType} onChange={(event) => setReviewType(event.target.value)}>{typeOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label className="text-sm font-bold">Severity<select className="mt-2 h-12 w-full rounded-xl border border-line bg-paper px-3 font-normal" value={reviewSeverity} onChange={(event) => setReviewSeverity(event.target.value)}>{severityOptions.map((option) => <option key={option}>{option}</option>)}</select></label></div><label className="mt-4 block text-sm font-bold">Deskripsi<textarea className="mt-2 min-h-28 w-full rounded-xl border border-line bg-paper p-3 font-normal" value={reviewDescription} onChange={(event) => setReviewDescription(event.target.value)} maxLength={500} required /></label><button className="mt-4 rounded-full bg-signal-orange px-5 py-3 font-bold text-white disabled:opacity-60" type="submit" disabled={isSavingReview}>{isSavingReview ? "Menyimpan..." : report.userReview?.reviewed ? "Simpan koreksi" : "Konfirmasi hasil"}</button></form>}
 
         <section className="mt-4 rounded-2xl border border-line bg-surface p-5"><h2 className="text-xl font-bold">Apakah kerusakan ini masih ada?</h2><p className="mt-2 text-sm leading-6 text-muted-ink">Bantu warga dan pengelola memahami kondisi terbaru.</p><div className="mt-4 flex flex-wrap gap-3"><button className="rounded-full border border-road-blue px-5 py-3 font-bold text-road-blue disabled:opacity-60" onClick={() => handleVerification("STILL_EXISTS")} disabled={isVerifying || isOwner}>Masih ada</button><button className="rounded-full border border-leaf-green px-5 py-3 font-bold text-leaf-green disabled:opacity-60" onClick={() => handleVerification("RESOLVED")} disabled={isVerifying || isOwner}>Sudah diperbaiki</button></div>{isOwner && <p className="mt-3 text-sm text-muted-ink">Pembuat laporan tidak memberikan vote pada laporannya sendiri.</p>}<div className="mt-5 grid grid-cols-3 gap-3 text-center text-sm"><div className="rounded-xl bg-[#edf5f1] p-3"><strong className="block text-xl text-leaf-green">{verification?.stillExistsCount || 0}</strong>Masih ada</div><div className="rounded-xl bg-[#f1f5f1] p-3"><strong className="block text-xl text-leaf-green">{verification?.resolvedCount || 0}</strong>Selesai</div><div className="rounded-xl bg-paper p-3"><strong className="block text-xl">{verification?.totalCount || 0}</strong>Total vote</div></div></section>
+        <section className="mt-4 rounded-2xl border border-line bg-surface p-5"><h2 className="text-xl font-bold">Perjalanan laporan</h2><div className="mt-5 space-y-5">{statusHistory.map((history, index) => <div className="flex gap-4" key={history.id}><div className="flex flex-col items-center"><span className="mt-1 h-3 w-3 rounded-full bg-road-blue" />{index < statusHistory.length - 1 && <span className="mt-2 h-full w-px bg-line" />}</div><div className="pb-1"><p className="font-bold">{statusLabels[history.toStatus || ""] || history.toStatus}</p><p className="mt-1 text-sm text-muted-ink">{history.note || "Status diperbarui"}</p></div></div>)}{statusHistory.length === 0 && <p className="text-sm text-muted-ink">Belum ada riwayat status.</p>}</div></section>
         {error && <p className="mt-4 rounded-xl border border-danger-red/30 bg-[#fff0ed] p-4 text-sm text-danger-red" role="alert">{error}</p>}
       </section>
     </main>

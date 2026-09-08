@@ -1,5 +1,5 @@
 import type { User } from "firebase/auth";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseDb, getFirebaseStorage } from "@/lib/firebase/client";
 
@@ -25,7 +25,12 @@ export async function uploadReportPhoto(userId: string, file: File) {
 }
 
 export async function createReport(user: User, photo: Awaited<ReturnType<typeof uploadReportPhoto>>, location: ReportLocation) {
-  const reportRef = await addDoc(collection(getFirebaseDb(), "reports"), {
+  const db = getFirebaseDb();
+  const reportRef = doc(collection(db, "reports"));
+  const historyRef = doc(collection(reportRef, "statusHistory"));
+  const batch = writeBatch(db);
+
+  batch.set(reportRef, {
     reporterId: user.uid,
     reporterDisplayName: user.displayName?.trim() || "Pengguna JALANIN",
     visibility: "public",
@@ -76,6 +81,15 @@ export async function createReport(user: User, photo: Awaited<ReturnType<typeof 
     updatedAt: serverTimestamp(),
     resolvedAt: null,
   });
+  batch.set(historyRef, {
+    fromStatus: null,
+    toStatus: "REPORTED",
+    changedBy: user.uid,
+    changedByRole: "user",
+    note: "Report submitted",
+    createdAt: serverTimestamp(),
+  });
+  await batch.commit();
 
   return reportRef.id;
 }
