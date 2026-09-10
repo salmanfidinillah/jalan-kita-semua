@@ -1,0 +1,175 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    function validDisplayName(value) {
+      return value is string && value.size() >= 2 && value.size() <= 80;
+    }
+
+    function validReportLocation(value) {
+      return value is map &&
+        value.keys().hasAll(['latitude', 'longitude', 'accuracyMeters', 'capturedAt']) &&
+        value.keys().hasOnly(['latitude', 'longitude', 'accuracyMeters', 'label', 'capturedAt']) &&
+        value.latitude is number && value.latitude >= -90 && value.latitude <= 90 &&
+        value.longitude is number && value.longitude >= -180 && value.longitude <= 180 &&
+        (value.accuracyMeters == null || (value.accuracyMeters is number && value.accuracyMeters >= 0)) &&
+        (value.label == null || (value.label is string && value.label.size() <= 160)) &&
+        value.capturedAt is timestamp;
+    }
+
+    function validReportPhoto(value) {
+      return value is map &&
+        value.keys().hasAll(['storagePath', 'downloadUrl', 'mimeType', 'sizeBytes']) &&
+        value.keys().hasOnly(['storagePath', 'downloadUrl', 'mimeType', 'sizeBytes']) &&
+        value.storagePath is string && value.downloadUrl is string &&
+        value.mimeType is string && value.mimeType.matches('image/(jpeg|png|webp)') &&
+        value.sizeBytes is number && value.sizeBytes > 0 && value.sizeBytes <= 8 * 1024 * 1024;
+    }
+
+    function validReportCreate() {
+      return request.resource.data.keys().hasAll([
+          'reporterId', 'reporterDisplayName', 'visibility', 'photo', 'location',
+          'damage', 'aiAnalysis', 'userReview', 'verificationSummary',
+          'riskFactor', 'priority', 'status', 'createdAt', 'updatedAt', 'resolvedAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'reporterId', 'reporterDisplayName', 'visibility', 'photo', 'location',
+          'damage', 'aiAnalysis', 'userReview', 'verificationSummary',
+          'riskFactor', 'priority', 'status', 'createdAt', 'updatedAt', 'resolvedAt'
+        ]) &&
+        request.resource.data.reporterId == request.auth.uid &&
+        validDisplayName(request.resource.data.reporterDisplayName) &&
+        request.resource.data.visibility == 'public' &&
+        validReportPhoto(request.resource.data.photo) &&
+        validReportLocation(request.resource.data.location) &&
+        request.resource.data.damage.keys().hasAll(['type', 'severity', 'description']) &&
+        request.resource.data.damage.keys().hasOnly(['type', 'severity', 'description']) &&
+        request.resource.data.damage.type in ['POTHOLE', 'CRACK', 'BROKEN_SURFACE', 'FLOODING', 'ROAD_OBSTRUCTION', 'OTHER'] &&
+        request.resource.data.damage.severity in ['LOW', 'MEDIUM', 'HIGH'] &&
+        request.resource.data.damage.description is string && request.resource.data.damage.description.size() <= 500 &&
+        request.resource.data.aiAnalysis.keys().hasOnly(['status']) &&
+        request.resource.data.aiAnalysis.status == 'PENDING' &&
+        request.resource.data.userReview.keys().hasOnly(['reviewed']) &&
+        request.resource.data.userReview.reviewed == false &&
+        request.resource.data.verificationSummary.keys().hasOnly([
+          'stillExistsCount', 'resolvedCount', 'totalCount', 'stillExistsRatio', 'confidence', 'lastVerifiedAt'
+        ]) &&
+        request.resource.data.verificationSummary.stillExistsCount == 0 &&
+        request.resource.data.verificationSummary.resolvedCount == 0 &&
+        request.resource.data.verificationSummary.totalCount == 0 &&
+        request.resource.data.verificationSummary.stillExistsRatio == 0 &&
+        request.resource.data.verificationSummary.confidence == 0 &&
+        request.resource.data.riskFactor.keys().hasOnly(['value', 'source', 'reason']) &&
+        request.resource.data.riskFactor.value == 50 &&
+        request.resource.data.priority.keys().hasOnly([
+          'score', 'classification', 'severityValue', 'communityValue', 'riskValue', 'formulaVersion', 'calculatedAt'
+        ]) &&
+        request.resource.data.priority.score == 23 &&
+        request.resource.data.priority.classification == 'LOW' &&
+        request.resource.data.priority.formulaVersion == 'v1' &&
+        request.resource.data.status == 'REPORTED' &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.updatedAt is timestamp &&
+        request.resource.data.resolvedAt == null;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasAll([
+          'displayName', 'email', 'role', 'isActive', 'contributionCount',
+          'reportCount', 'verificationCount', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'displayName', 'email', 'role', 'photoUrl', 'isActive', 'contributionCount',
+          'reportCount', 'verificationCount', 'createdAt', 'updatedAt'
+        ]) &&
+        validDisplayName(request.resource.data.displayName) &&
+        request.resource.data.email is string &&
+        request.resource.data.role == 'user' &&
+        request.resource.data.isActive == true &&
+        request.resource.data.contributionCount == 0 &&
+        request.resource.data.reportCount == 0 &&
+        request.resource.data.verificationCount == 0 &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.updatedAt is timestamp;
+
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow update: if isOwner(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoUrl', 'updatedAt']) &&
+        validDisplayName(request.resource.data.displayName) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.isActive == resource.data.isActive &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.updatedAt is timestamp;
+
+      allow delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if resource.data.visibility == 'public' ||
+        (signedIn() && resource.data.reporterId == request.auth.uid) || isAdmin();
+
+      allow create: if signedIn() && validReportCreate();
+
+      // All report mutations after creation go through validated server operations.
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+
+      match /statusHistory/{historyId} {
+        allow read: if get(/databases/$(database)/documents/reports/$(reportId)).data.visibility == 'public' || isAdmin();
+        allow create: if isAdmin() ||
+          (signedIn() &&
+            getAfter(/databases/$(database)/documents/reports/$(reportId)).data.reporterId == request.auth.uid &&
+            request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'changedBy', 'changedByRole', 'note', 'createdAt']) &&
+            request.resource.data.toStatus == 'REPORTED' &&
+            request.resource.data.changedBy == request.auth.uid &&
+            request.resource.data.changedByRole == 'user' &&
+            request.resource.data.createdAt is timestamp);
+        allow update, delete: if isAdmin();
+      }
+
+      match /verifications/{userId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) &&
+          get(/databases/$(database)/documents/reports/$(reportId)).data.visibility == 'public' &&
+          get(/databases/$(database)/documents/reports/$(reportId)).data.reporterId != request.auth.uid &&
+          request.resource.data.keys().hasAll(['userId', 'choice', 'createdAt', 'updatedAt']) &&
+          request.resource.data.keys().hasOnly(['userId', 'choice', 'createdAt', 'updatedAt']) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.choice in ['STILL_EXISTS', 'RESOLVED'] &&
+          request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp;
+        allow update: if isOwner(userId) &&
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['choice', 'updatedAt']) &&
+          request.resource.data.choice in ['STILL_EXISTS', 'RESOLVED'] &&
+          request.resource.data.updatedAt is timestamp;
+        allow delete: if false;
+      }
+    }
+
+    match /ai_analyses/{analysisId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /admin_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

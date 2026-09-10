@@ -13,7 +13,16 @@ const firebaseConfig = {
 };
 
 export function isFirebaseConfigured() {
-  return Object.values(firebaseConfig).every(Boolean);
+  // appId is optional for the Auth, Firestore, and Storage SDKs used by the MVP.
+  // Keeping it optional lets an existing Firebase web API key be used while the
+  // project is still being finalized in the Firebase console.
+  return Boolean(
+    firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId &&
+      firebaseConfig.storageBucket &&
+      firebaseConfig.messagingSenderId,
+  );
 }
 
 export function getFirebaseAuth() {

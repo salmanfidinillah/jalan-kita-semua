@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./tailwind.css";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
 export const metadata: Metadata = {
   title: "JALANIN | Jalan Aman, Kota Nyaman",
@@ -8,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="id"><body>{children}</body></html>;
+  return <html lang="id"><body><AuthProvider>{children}</AuthProvider></body></html>;
 }

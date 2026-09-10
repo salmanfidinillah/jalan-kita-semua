@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
+  signInWithPopup,
   updateProfile,
 } from "firebase/auth";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
@@ -23,6 +25,12 @@ const errorMessages: Record<string, string> = {
   "auth/weak-password": "Password harus memiliki minimal 6 karakter.",
   "auth/invalid-email": "Masukkan alamat email yang valid.",
   "auth/too-many-requests": "Terlalu banyak percobaan. Coba lagi beberapa saat.",
+  "auth/popup-closed-by-user": "Jendela Google ditutup sebelum proses selesai.",
+  "auth/popup-blocked": "Popup Google diblokir browser. Izinkan popup lalu coba lagi.",
+  "auth/operation-not-allowed": "Login Google belum diaktifkan. Gunakan email dan password untuk sementara.",
+  "auth/account-exists-with-different-credential": "Email ini sudah terhubung dengan metode masuk lain.",
+  "auth/network-request-failed": "Koneksi gagal. Periksa internet lalu coba lagi.",
+  "auth/invalid-api-key": "Konfigurasi Firebase tidak valid.",
 };
 
 export function AuthForm({ mode }: AuthFormProps) {
@@ -40,20 +48,41 @@ export function AuthForm({ mode }: AuthFormProps) {
     setIsPending(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedName = displayName.trim();
+      if (isRegister && (normalizedName.length < 2 || normalizedName.length > 80)) {
+        throw new Error("Nama harus berisi 2 sampai 80 karakter.");
+      }
       const auth = getFirebaseAuth();
       const credential = isRegister
-        ? await createUserWithEmailAndPassword(auth, email, password)
-        : await signInWithEmailAndPassword(auth, email, password);
-
-      if (isRegister && displayName.trim()) {
-        await updateProfile(credential.user, { displayName: displayName.trim() });
-      }
+        ? await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+        : await signInWithEmailAndPassword(auth, normalizedEmail, password);
 
       if (isRegister) {
-        await createUserProfile(credential.user);
+        await updateProfile(credential.user, { displayName: normalizedName });
       }
 
-      router.push("/dashboard");
+      const role = await createUserProfile(credential.user);
+
+      router.push(role === "admin" ? "/admin" : "/dashboard");
+    } catch (authError) {
+      const code = authError instanceof Error && "code" in authError
+        ? String(authError.code)
+        : "";
+      setError(errorMessages[code] ?? (authError instanceof Error ? authError.message : "Terjadi kesalahan. Coba lagi."));
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setError("");
+    setIsPending(true);
+
+    try {
+      const credential = await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
+      const role = await createUserProfile(credential.user);
+      router.push(role === "admin" ? "/admin" : "/dashboard");
     } catch (authError) {
       const code = authError instanceof Error && "code" in authError
         ? String(authError.code)
@@ -65,11 +94,11 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md rounded-[2rem] border border-line bg-surface p-7 shadow-[0_24px_70px_rgba(23,32,38,0.08)] sm:p-9">
+    <div className="auth-card w-full max-w-md rounded-[2rem] border border-line bg-surface p-7 shadow-[0_24px_70px_rgba(23,32,38,0.08)] sm:p-9">
       <div className="mb-8">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-signal-orange">JALANIN</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight">{isRegister ? "Buat akun" : "Selamat datang kembali"}</h1>
-        <p className="mt-3 leading-7 text-muted-ink">
+        <p className="auth-kicker">JALANIN / AKSES WARGA</p>
+        <h1 className="auth-title mt-3 text-3xl font-bold tracking-tight">{isRegister ? "Buat akun" : "Selamat datang kembali"}</h1>
+        <p className="auth-subtitle mt-3 leading-7 text-muted-ink">
           {isRegister ? "Mulai bantu pantau jalan di kotamu." : "Masuk untuk membuat laporan dan ikut memverifikasi."}
         </p>
       </div>
@@ -80,7 +109,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </div>
       )}
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="auth-form space-y-5" onSubmit={handleSubmit}>
         {isRegister && <label className="block text-sm font-bold">Nama lengkap<input className="mt-2 h-12 w-full rounded-xl border border-line bg-paper px-4 font-normal outline-none transition focus:border-road-blue focus:ring-2 focus:ring-road-blue/20" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" required /></label>}
         <label className="block text-sm font-bold">Email<input className="mt-2 h-12 w-full rounded-xl border border-line bg-paper px-4 font-normal outline-none transition focus:border-road-blue focus:ring-2 focus:ring-road-blue/20" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
         <label className="block text-sm font-bold">Password<input className="mt-2 h-12 w-full rounded-xl border border-line bg-paper px-4 font-normal outline-none transition focus:border-road-blue focus:ring-2 focus:ring-road-blue/20" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} required /></label>
@@ -88,7 +117,10 @@ export function AuthForm({ mode }: AuthFormProps) {
         <button className="h-12 w-full rounded-full bg-signal-orange px-5 font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={isPending || !isFirebaseConfigured()}>{isPending ? "Memproses..." : isRegister ? "Buat akun" : "Masuk"}</button>
       </form>
 
-      <p className="mt-7 text-center text-sm text-muted-ink">{isRegister ? "Sudah punya akun?" : "Belum punya akun?"}{" "}<Link className="font-bold text-road-blue hover:underline" href={isRegister ? "/login" : "/register"}>{isRegister ? "Masuk" : "Daftar sekarang"}</Link></p>
+      <div className="auth-divider"><span>atau masuk dengan</span></div>
+      <button className="google-button" type="button" onClick={handleGoogleSignIn} disabled={isPending || !isFirebaseConfigured()}><span className="google-mark">G</span>{isPending ? "Memproses..." : "Lanjutkan dengan Google"}</button>
+
+      <p className="auth-switch mt-7 text-center text-sm text-muted-ink">{isRegister ? "Sudah punya akun?" : "Belum punya akun?"}{" "}<Link className="font-bold text-road-blue hover:underline" href={isRegister ? "/login" : "/register"}>{isRegister ? "Masuk" : "Daftar sekarang"}</Link></p>
     </div>
   );
 }

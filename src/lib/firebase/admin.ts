@@ -40,9 +40,15 @@ export function getAdminStorage() {
   return getStorage(getAdminApp());
 }
 
+export async function getAdminAccessToken() {
+  const credential = getAdminApp().options.credential;
+  if (!credential) throw new Error("Firebase Admin credential belum tersedia.");
+  return (await credential.getAccessToken()).access_token;
+}
+
 export async function assertAdmin(uid: string) {
   const profile = await getAdminDb().collection("users").doc(uid).get();
-  if (!profile.exists || profile.data()?.role !== "admin" || profile.data()?.isActive === false) {
+  if (!profile.exists || profile.data()?.role !== "admin" || profile.data()?.isActive !== true) {
     throw new Error("FORBIDDEN");
   }
 }

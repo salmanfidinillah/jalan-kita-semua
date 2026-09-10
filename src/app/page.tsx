@@ -1,57 +1,40 @@
 import Link from "next/link";
+import { LandingDataProvider, LandingImpact, LandingLatestReports, LandingMapPreview } from "@/components/landing/landing-community-data";
+import { SiteHeader } from "@/components/landing/site-header";
+
+function BrandMap() {
+  return <div className="landing-map-background" aria-hidden="true"><div className="landing-world-map map-a" /><div className="landing-world-map map-b" /><div className="landing-world-map map-c" /><svg className="landing-network-line" viewBox="0 0 700 360" preserveAspectRatio="none"><path d="M20 92c120-90 155 58 275-4s175-74 385 80" /><path d="M120 318c105-108 180-37 252-130s163-65 284-136" /></svg><span className="landing-map-dot dot-a" /><span className="landing-map-dot dot-b" /><span className="landing-map-dot dot-c" /><span className="landing-map-dot dot-d" /></div>;
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return <p className="landing-eyebrow"><span />{children}</p>;
+}
 
 export default function Home() {
-  return (
-    <div className="min-h-screen overflow-hidden">
-      <header className="mx-auto flex max-w-300 items-center justify-between px-5 py-5 lg:px-10">
-        <Link href="/" className="flex items-center gap-3" aria-label="JALANIN beranda">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-road-blue text-lg font-bold text-white">J</span>
-          <span className="text-xl font-bold tracking-tight">JALANIN</span>
-        </Link>
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-muted-ink md:flex">
-          <a href="/map" className="transition-colors hover:text-ink">Peta kondisi</a>
-          <a href="#cara-kerja" className="transition-colors hover:text-ink">Cara kerja</a>
-          <a href="#laporan" className="transition-colors hover:text-ink">Laporan terbaru</a>
-        </nav>
-        <a href="#mulai" className="rounded-full bg-ink px-5 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5">Masuk</a>
-      </header>
+  return <LandingDataProvider><div className="landing-page">
+    <BrandMap />
+    <SiteHeader />
+    <main>
+      <section className="landing-wrap landing-hero">
+        <div className="landing-hero-copy landing-reveal"><Eyebrow>Jalan aman, kota nyaman</Eyebrow><h1>Jalan yang lebih baik<br />dimulai dari <em>kepedulian kita.</em></h1><p className="landing-hero-intro">Laporkan kerusakan jalan di sekitar Anda, lihat kondisi jalan, dan ikut mengawal perbaikannya secara terbuka.</p><div className="landing-hero-actions"><Link href="/reports/new" className="landing-button landing-button-accent">Buat laporan <span aria-hidden="true">↗</span></Link><Link href="/map" className="landing-text-link">Jelajahi peta <span aria-hidden="true">↗</span></Link></div><div className="landing-proof"><span className="landing-proof-avatars"><i /><i /><i /></span><span>Dipantau bersama oleh warga</span><b>01</b></div></div>
+        <div className="landing-hero-visual landing-reveal landing-reveal-delay"><div className="landing-visual-caption"><span>FIELD NOTE / 01</span><i /> Kondisi nyata di sekitar kita</div><div className="landing-road-image" /><div className="landing-road-image-small" /><span className="landing-hero-pin pin-one" /><span className="landing-hero-pin pin-two" /><span className="landing-route route-one" /><span className="landing-route route-two" /><div className="landing-report-card"><div className="landing-report-card-top"><span className="landing-status-dot high" />Laporan terbaru</div><strong>Jalan rusak</strong><span className="landing-report-location">⌖ Sukoharjo, Jawa Tengah</span><span className="landing-report-status">Menunggu penanganan <b aria-hidden="true">↗</b></span></div><div className="landing-coordinate"><span>−7° 40&apos; 23.1&quot;</span><span>110° 50&apos; 09.5&quot;</span></div></div>
+      </section>
 
-      <main>
-        <section className="mx-auto grid max-w-300 gap-12 px-5 pb-20 pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-10 lg:pb-28 lg:pt-20">
-          <div>
-            <p className="mb-6 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-signal-orange">
-              <span className="h-2 w-2 rounded-full bg-signal-orange" />
-              Pantau jalan di sekitarmu
-            </p>
-            <h1 className="max-w-190 text-5xl font-bold leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">Jalan aman,<br /><span className="text-road-blue">kota nyaman.</span></h1>
-            <p className="mt-7 max-w-140 text-lg leading-8 text-muted-ink">Temukan kondisi jalan, laporkan kerusakan dengan mudah, dan bantu kota menentukan mana yang perlu ditangani lebih dulu.</p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="/map" className="inline-flex items-center justify-center gap-3 rounded-full bg-signal-orange px-6 py-4 font-bold text-white transition-transform hover:-translate-y-0.5">Lihat peta kondisi <span aria-hidden="true">-&gt;</span></a>
-              <a href="#mulai" className="inline-flex items-center justify-center rounded-full border border-line bg-surface px-6 py-4 font-bold text-ink transition-colors hover:border-ink">Buat laporan</a>
-            </div>
-            <p className="mt-5 text-sm text-muted-ink">Gratis untuk digunakan. Data publik, proses transparan.</p>
-          </div>
+      <LandingImpact />
 
-          <div id="peta" className="relative min-h-105 overflow-hidden rounded-[2rem] border border-line bg-[#d9e1d8] shadow-[0_24px_70px_rgba(23,32,38,0.12)]">
-            <div className="absolute inset-0 opacity-70" style={{ backgroundImage: "linear-gradient(28deg, transparent 46%, #f6f4ef 47%, #f6f4ef 51%, transparent 52%), linear-gradient(112deg, transparent 41%, #f6f4ef 42%, #f6f4ef 45%, transparent 46%), linear-gradient(165deg, transparent 57%, #c1d0c4 58%, #c1d0c4 60%, transparent 61%)", backgroundSize: "180px 150px, 210px 180px, 260px 210px" }} />
-            <div className="absolute left-[23%] top-[27%] h-5 w-5 rounded-full border-4 border-white bg-danger-red shadow-lg" />
-            <div className="absolute left-[61%] top-[45%] h-5 w-5 rounded-full border-4 border-white bg-warning-yellow shadow-lg" />
-            <div className="absolute left-[43%] top-[69%] h-5 w-5 rounded-full border-4 border-white bg-signal-orange shadow-lg" />
-            <div className="absolute right-5 top-5 rounded-xl bg-surface/95 px-4 py-3 shadow-sm"><p className="text-xs font-bold uppercase tracking-wider text-muted-ink">Area terlihat</p><p className="mt-1 text-lg font-bold">Surabaya</p></div>
-            <div className="absolute bottom-5 left-5 rounded-2xl bg-surface/95 p-4 shadow-sm"><p className="text-sm font-bold">128 laporan aktif</p><p className="mt-1 text-xs text-muted-ink">Diperbarui beberapa menit lalu</p></div>
-          </div>
-        </section>
+      <section id="cara-kerja" className="landing-wrap landing-process"><div className="landing-section-heading"><div><Eyebrow>Cara kerja JALANIN</Eyebrow><h2>Semudah melihat,<br /><em>melaporkan, dan mengawal.</em></h2></div><p>Setiap laporan melewati proses yang jelas agar informasi jalan dapat dipercaya dan ditindaklanjuti.</p></div><div className="landing-process-line">{[{ number: "01", title: "TEMUKAN", text: "Temukan jalan yang mengalami kerusakan.", icon: "⌖" }, { number: "02", title: "LAPORKAN", text: "Kirim foto, lokasi, dan kondisi jalan.", icon: "↗" }, { number: "03", title: "PANTAU", text: "Ikuti perkembangan laporan sampai ditindaklanjuti.", icon: "◌" }].map((step) => <article key={step.number}><span className="landing-step-number">{step.number}</span><span className="landing-step-icon">{step.icon}</span><h3>{step.title}</h3><p>{step.text}</p></article>)}</div></section>
 
-        <section id="cara-kerja" className="border-y border-line bg-surface">
-          <div className="mx-auto max-w-300 px-5 py-16 lg:px-10 lg:py-20"><div className="grid gap-10 md:grid-cols-3">
-            {[['01', 'Laporkan', 'Ambil foto dan tandai lokasi jalan yang bermasalah.'], ['02', 'Periksa', 'AI membantu membaca kondisi, kamu tetap memegang keputusan.'], ['03', 'Pantau', 'Lihat verifikasi warga dan perkembangan penanganannya.']].map(([number, title, text]) => <article key={number} className="border-l-2 border-line pl-5"><p className="text-sm font-bold text-signal-orange">{number}</p><h2 className="mt-3 text-2xl font-bold">{title}</h2><p className="mt-3 max-w-70 leading-7 text-muted-ink">{text}</p></article>)}
-          </div></div>
-        </section>
+      <section id="tentang" className="landing-wrap landing-features"><div className="landing-feature-intro"><Eyebrow>Semua yang dibutuhkan</Eyebrow><h2>Semua yang kamu<br /><em>butuhkan untuk<br />melaporkan jalan.</em></h2><Link href="/reports/new" className="landing-text-link">Mulai dari sekarang <span aria-hidden="true">↗</span></Link></div><div className="landing-feature-list">{[{ icon: "⌖", title: "Lokasi akurat", text: "Tandai titik kerusakan dengan lokasi yang mudah ditemukan." }, { icon: "▧", title: "Foto & bukti", text: "Lengkapi laporan dengan kondisi nyata di lapangan." }, { icon: "◷", title: "Status laporan", text: "Pantau setiap tahap, dari dikirim sampai ditangani." }, { icon: "⌁", title: "Peta kondisi", text: "Lihat masalah jalan yang sedang terjadi di sekitarmu." }].map((feature) => <article key={feature.title}><span className="landing-feature-icon">{feature.icon}</span><div><h3>{feature.title}</h3><p>{feature.text}</p></div><span className="landing-feature-arrow" aria-hidden="true">↗</span></article>)}</div></section>
 
-        <section id="laporan" className="mx-auto max-w-300 px-5 py-16 lg:px-10 lg:py-24"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-sm font-bold uppercase tracking-[0.16em] text-road-blue">Dari komunitas</p><h2 className="mt-3 text-4xl font-bold tracking-tight">Laporan yang perlu kamu tahu.</h2></div><a href="#peta" className="font-bold text-road-blue">Buka semua laporan -&gt;</a></div><div className="mt-10 grid gap-4 md:grid-cols-3"><div className="rounded-2xl border border-line bg-surface p-5"><div className="mb-14 h-28 rounded-xl bg-[#d7dcd2]" /><p className="text-xs font-bold uppercase tracking-wider text-danger-red">Prioritas tinggi</p><h3 className="mt-2 text-xl font-bold">Lubang besar di badan jalan</h3><p className="mt-2 text-sm text-muted-ink">Jl. Darmo, Surabaya</p></div><div className="rounded-2xl border border-line bg-surface p-5"><div className="mb-14 h-28 rounded-xl bg-[#e2dfd1]" /><p className="text-xs font-bold uppercase tracking-wider text-warning-yellow">Perlu diperiksa</p><h3 className="mt-2 text-xl font-bold">Genangan setelah hujan</h3><p className="mt-2 text-sm text-muted-ink">Jl. Ketintang, Surabaya</p></div><div className="rounded-2xl border border-line bg-surface p-5"><div className="mb-14 h-28 rounded-xl bg-[#d4ddd8]" /><p className="text-xs font-bold uppercase tracking-wider text-leaf-green">Selesai</p><h3 className="mt-2 text-xl font-bold">Permukaan jalan retak</h3><p className="mt-2 text-sm text-muted-ink">Jl. Raya Gubeng, Surabaya</p></div></div></section>
-      </main>
+      <section className="landing-wrap landing-map-section"><div className="landing-map-copy"><Eyebrow>Eksplorasi kondisi jalan</Eyebrow><h2>Lihat kondisi jalan<br /><em>di sekitar kamu.</em></h2><p>Peta publik JALANIN menghubungkan laporan warga dengan lokasi nyata, sehingga kamu tahu apa yang perlu diperhatikan.</p><Link href="/map" className="landing-button landing-button-dark">Buka peta kondisi <span aria-hidden="true">↗</span></Link></div><LandingMapPreview /></section>
 
-      <footer id="mulai" className="bg-ink text-white"><div className="mx-auto flex max-w-300 flex-col gap-8 px-5 py-12 sm:flex-row sm:items-end sm:justify-between lg:px-10"><div><p className="text-2xl font-bold">JALANIN</p><p className="mt-2 max-w-80 text-sm leading-6 text-white/60">Jalan Aman, Kota Nyaman. Data jalan yang lebih terbuka untuk semua.</p></div><p className="text-sm text-white/50">MVP V1 &middot; Dibangun untuk kota yang lebih nyaman</p></div></footer>
-    </div>
-  );
+      <section className="landing-wrap landing-story"><div className="landing-story-image"><div className="landing-story-photo" /><span className="landing-story-stamp">Untuk<br /><b>kota kita</b></span><span className="landing-story-note">STORY / 02</span></div><div className="landing-story-copy"><Eyebrow>Mengapa JALANIN</Eyebrow><h2>Satu laporan kecil<br /><em>bisa membawa<br />perubahan besar.</em></h2><p>Jalan yang aman bukan hanya soal aspal. Ia adalah akses menuju sekolah, pekerjaan, keluarga, dan kesempatan. Dengan berbagi informasi, kita membantu kota mengambil keputusan yang lebih baik.</p><Link href="/map" className="landing-text-link">Kenapa JALANIN? <span aria-hidden="true">↗</span></Link></div></section>
+
+      <section id="laporan" className="landing-wrap landing-latest"><div className="landing-section-heading"><div><Eyebrow>Dari komunitas</Eyebrow><h2>Laporan terbaru<br /><em>di sekitar kita.</em></h2></div><Link href="/map" className="landing-text-link">Buka semua laporan <span aria-hidden="true">↗</span></Link></div><LandingLatestReports /></section>
+
+      <section className="landing-wrap landing-final-cta"><div><Eyebrow>Mulai dari sekitarmu</Eyebrow><h2>Melihat jalan rusak?</h2><p>Jangan hanya melewatinya. Laporkan dan bantu wujudkan jalan yang lebih baik.</p></div><Link href="/reports/new" className="landing-button landing-button-light">Laporkan jalan rusak <span aria-hidden="true">↗</span></Link><div className="landing-cta-map" aria-hidden="true" /></section>
+    </main>
+
+    <footer className="landing-footer"><div className="landing-wrap landing-footer-inner"><div className="landing-footer-brand"><Link href="/" className="landing-brand landing-brand-light"><span className="landing-brand-mark" aria-hidden="true"><span /></span><span>JALANIN</span></Link><p>Lapor jalan rusak,<br /><em>wujudkan perubahan.</em></p></div><div className="landing-footer-column"><b>Jelajahi</b><Link href="/map">Peta kondisi</Link><a href="#cara-kerja">Cara kerja</a><a href="#laporan">Laporan terbaru</a></div><div className="landing-footer-column"><b>Partisipasi</b><Link href="/reports/new">Buat laporan</Link><Link href="/login">Masuk</Link><Link href="/register">Daftar</Link></div><div className="landing-footer-column"><b>Bantuan</b><a href="mailto:halo@jalanin.id">Kontak</a><a href="#tentang">Tentang JALANIN</a><a href="/docs/SECURITY.md">Kebijakan privasi</a></div></div><div className="landing-wrap landing-footer-bottom"><span>© 2026 JALANIN</span><span>Jalan Aman, Kota Nyaman.</span><span className="landing-footer-status"><span /> Sistem publik aktif</span></div></footer>
+  </div></LandingDataProvider>;
 }

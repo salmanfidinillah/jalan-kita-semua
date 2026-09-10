@@ -1,34 +1,61 @@
 import type { User } from "firebase/auth";
 import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { getFirebaseDb, getFirebaseStorage } from "@/lib/firebase/client";
+import { calculatePriority } from "@/lib/domain/report";
 
 type ReportLocation = {
   latitude: number;
   longitude: number;
   accuracyMeters: number | null;
+  label?: string;
 };
 
-export async function uploadReportPhoto(userId: string, file: File) {
-  const reportId = crypto.randomUUID();
+export async function uploadReportPhoto(userId: string, file: File, reportId = crypto.randomUUID(), onProgress?: (progress: number) => void) {
+  if (!userId || !file.type.startsWith("image/")) {
+    throw new Error("Foto laporan tidak valid.");
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error("Ukuran foto maksimal 8 MB.");
+  }
   const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
   const storagePath = `reports/${userId}/${reportId}/original.${extension}`;
   const photoRef = ref(getFirebaseStorage(), storagePath);
 
-  await uploadBytes(photoRef, file, { contentType: file.type });
+  await new Promise<void>((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(photoRef, file, { contentType: file.type });
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => onProgress?.(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)),
+      reject,
+      resolve,
+    );
+  });
 
   return {
     reportId,
     storagePath,
+    mimeType: file.type,
+    sizeBytes: file.size,
     downloadUrl: await getDownloadURL(photoRef),
   };
 }
 
-export async function createReport(user: User, photo: Awaited<ReturnType<typeof uploadReportPhoto>>, location: ReportLocation) {
+export async function deleteReportPhoto(storagePath: string) {
+  await deleteObject(ref(getFirebaseStorage(), storagePath));
+}
+
+export async function createReport(user: User, photo: Awaited<ReturnType<typeof uploadReportPhoto>>, location: ReportLocation, description: string) {
+  const normalizedDescription = description.trim();
+  if (!photo.reportId || !Number.isFinite(location.latitude) || location.latitude < -90 || location.latitude > 90 || !Number.isFinite(location.longitude) || location.longitude < -180 || location.longitude > 180 || (location.accuracyMeters !== null && (!Number.isFinite(location.accuracyMeters) || location.accuracyMeters < 0)) || normalizedDescription.length < 10 || normalizedDescription.length > 500 || (location.label !== undefined && location.label.length > 160)) {
+    throw new Error("Data lokasi laporan tidak valid.");
+  }
   const db = getFirebaseDb();
-  const reportRef = doc(collection(db, "reports"));
+  const reportRef = doc(db, "reports", photo.reportId);
   const historyRef = doc(collection(reportRef, "statusHistory"));
   const batch = writeBatch(db);
+
+  const priority = calculatePriority("LOW", 0, 50);
 
   batch.set(reportRef, {
     reporterId: user.uid,
@@ -37,16 +64,14 @@ export async function createReport(user: User, photo: Awaited<ReturnType<typeof 
     photo: {
       storagePath: photo.storagePath,
       downloadUrl: photo.downloadUrl,
-      mimeType: "image/*",
+      mimeType: photo.mimeType,
+      sizeBytes: photo.sizeBytes,
     },
-    location: {
-      ...location,
-      capturedAt: serverTimestamp(),
-    },
+    location: { ...location, ...(location.label ? { label: location.label } : {}), capturedAt: serverTimestamp() },
     damage: {
       type: "OTHER",
       severity: "LOW",
-      description: "Menunggu analisis kondisi jalan.",
+      description: normalizedDescription,
     },
     aiAnalysis: {
       status: "PENDING",
@@ -67,15 +92,7 @@ export async function createReport(user: User, photo: Awaited<ReturnType<typeof 
       source: "default",
       reason: null,
     },
-    priority: {
-      score: 23,
-      classification: "LOW",
-      severityValue: 25,
-      communityValue: 0,
-      riskValue: 50,
-      formulaVersion: "v1",
-      calculatedAt: serverTimestamp(),
-    },
+    priority: { ...priority, formulaVersion: "v1", calculatedAt: serverTimestamp() },
     status: "REPORTED",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
