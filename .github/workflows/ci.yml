@@ -29,9 +29,9 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Production build
+        run: npm run build
       - name: TypeScript check
         run: npm run typecheck
       - name: Unit tests
         run: npm test -- --run
-      - name: Production build
-        run: npm run build
