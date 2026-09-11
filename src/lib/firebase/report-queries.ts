@@ -18,10 +18,10 @@ function toReportListItem(snapshot: QuerySnapshot<DocumentData>) {
 }
 
 export async function getPublicReports(maxReports = 100) {
-  const snapshot = await getDocs(
-    query(collection(getFirebaseDb(), "reports"), where("visibility", "==", "public"), orderBy("createdAt", "desc"), limit(maxReports)),
-  );
-  return toReportListItem(snapshot);
+  const response = await fetch(`/api/public/reports?limit=${Math.min(100, Math.max(1, maxReports))}`, { cache: "no-store" });
+  const payload = await response.json() as { success?: boolean; data?: ReportListItem[]; error?: { message?: string } };
+  if (!response.ok || !payload.success) throw new Error(payload.error?.message || "Laporan publik belum dapat dimuat.");
+  return payload.data || [];
 }
 
 export async function getReportsByUser(userId: string, maxReports = 20) {
@@ -64,20 +64,8 @@ export async function getUserProfileSummary(userId: string) {
 }
 
 export async function getPublicReportStats() {
-  const reports = collection(getFirebaseDb(), "reports");
-  const [total, verified, inProgress, resolved, highPriority] = await Promise.all([
-    getCountFromServer(query(reports, where("visibility", "==", "public"))),
-    getCountFromServer(query(reports, where("visibility", "==", "public"), where("status", "==", "VERIFIED"))),
-    getCountFromServer(query(reports, where("visibility", "==", "public"), where("status", "==", "IN_PROGRESS"))),
-    getCountFromServer(query(reports, where("visibility", "==", "public"), where("status", "==", "RESOLVED"))),
-    getCountFromServer(query(reports, where("visibility", "==", "public"), where("priority.classification", "==", "HIGH"))),
-  ]);
-
-  return {
-    total: total.data().count,
-    verified: verified.data().count,
-    inProgress: inProgress.data().count,
-    resolved: resolved.data().count,
-    highPriority: highPriority.data().count,
-  };
+  const response = await fetch("/api/public/stats", { cache: "no-store" });
+  const payload = await response.json() as { success?: boolean; data?: { total: number; verified: number; inProgress: number; resolved: number; highPriority: number }; error?: { message?: string } };
+  if (!response.ok || !payload.success) throw new Error(payload.error?.message || "Statistik publik belum dapat dimuat.");
+  return payload.data || { total: 0, verified: 0, inProgress: 0, resolved: 0, highPriority: 0 };
 }

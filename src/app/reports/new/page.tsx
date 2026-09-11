@@ -97,6 +97,11 @@ export default function NewReportPage() {
         ...(locationLabel.trim() ? { label: locationLabel.trim() } : {}),
       }, description);
 
+      await fetch(`/api/reports/${createdReportId}/accounting`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await getIdToken(user)}` },
+      }).catch(() => undefined);
+
       try {
         const token = await getIdToken(user);
         await fetch(`/api/reports/${createdReportId}/analyze`, {

@@ -3,14 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getIdToken } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getFirebaseDb, isFirebaseConfigured } from "@/lib/firebase/client";
+import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { useAuth } from "@/components/auth/auth-provider";
 
 type Report = {
+  id?: string;
   reporterId?: string;
+  isOwner?: boolean;
   photo?: { downloadUrl?: string };
   location?: { latitude?: number; longitude?: number; label?: string };
   damage?: { type?: string; severity?: string; description?: string };
@@ -74,27 +75,28 @@ export default function ReportDetailPage() {
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
-    const reportRef = doc(getFirebaseDb(), "reports", params.reportId);
-    Promise.all([
-      getDoc(reportRef),
-      getDocs(query(collection(reportRef, "statusHistory"), orderBy("createdAt", "asc"))),
-      userId ? getDoc(doc(reportRef, "verifications", userId)) : Promise.resolve(null),
-    ])
-      .then(([snapshot, historySnapshot, verificationSnapshot]) => {
-        if (!snapshot.exists()) {
-          setError("Laporan tidak ditemukan.");
-          return;
-        }
-        const nextReport = snapshot.data() as Report;
+    let cancelled = false;
+    async function loadReport() {
+      try {
+        const headers: HeadersInit = user ? { Authorization: `Bearer ${await getIdToken(user)}` } : {};
+        const response = await fetch(`/api/reports/${encodeURIComponent(params.reportId)}`, { headers, cache: "no-store" });
+        const payload = await response.json() as { success?: boolean; data?: { report: Report; statusHistory: StatusHistory[]; userChoice?: "STILL_EXISTS" | "RESOLVED" | null }; error?: { message?: string } };
+        if (!response.ok || !payload.success || !payload.data) throw new Error(payload.error?.message || "Laporan belum dapat dimuat. Coba lagi.");
+        if (cancelled) return;
+        const nextReport = payload.data.report;
         setReport(nextReport);
-        setStatusHistory(historySnapshot.docs.map((history) => ({ id: history.id, ...history.data() } as StatusHistory)));
-        setUserChoice(verificationSnapshot?.exists() ? (verificationSnapshot.data().choice as "STILL_EXISTS" | "RESOLVED") : null);
+        setStatusHistory(payload.data.statusHistory);
+        setUserChoice(payload.data.userChoice || null);
         setReviewType(nextReport.aiAnalysis?.damageType || nextReport.damage?.type || "OTHER");
         setReviewSeverity(nextReport.aiAnalysis?.severity || nextReport.damage?.severity || "LOW");
         setReviewDescription(nextReport.aiAnalysis?.description || nextReport.damage?.description || "");
-      })
-      .catch(() => setError("Laporan belum dapat dimuat. Coba lagi."));
-  }, [params.reportId, userId]);
+      } catch (loadError) {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Laporan belum dapat dimuat. Coba lagi.");
+      }
+    }
+    void loadReport();
+    return () => { cancelled = true; };
+  }, [params.reportId, user, userId]);
 
   async function getToken() {
     if (!user) throw new Error("Login diperlukan untuk aksi ini.");
@@ -156,7 +158,7 @@ export default function ReportDetailPage() {
   if (error && !report) return <main className="flex min-h-screen flex-col items-center justify-center gap-5 px-5"><p className="text-lg font-bold">{error}</p><Link className="rounded-full bg-ink px-5 py-3 font-bold text-white" href={user ? "/dashboard" : "/map"}>{user ? "Kembali ke dashboard" : "Kembali ke peta"}</Link></main>;
   if (!report) return <main className="flex min-h-screen items-center justify-center text-muted-ink">Memuat laporan...</main>;
 
-  const isOwner = user?.uid === report.reporterId;
+  const isOwner = report.isOwner === true;
   const verification = report.verificationSummary;
 
   return (

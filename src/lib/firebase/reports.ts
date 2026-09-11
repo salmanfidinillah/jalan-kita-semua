@@ -3,13 +3,9 @@ import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { getFirebaseDb, getFirebaseStorage } from "@/lib/firebase/client";
 import { calculatePriority } from "@/lib/domain/report";
+import { validateReportInput, type ReportLocationInput } from "@/lib/domain/report-validation";
 
-type ReportLocation = {
-  latitude: number;
-  longitude: number;
-  accuracyMeters: number | null;
-  label?: string;
-};
+type ReportLocation = ReportLocationInput;
 
 export async function uploadReportPhoto(userId: string, file: File, reportId = crypto.randomUUID(), onProgress?: (progress: number) => void) {
   if (!userId || !file.type.startsWith("image/")) {
@@ -46,10 +42,8 @@ export async function deleteReportPhoto(storagePath: string) {
 }
 
 export async function createReport(user: User, photo: Awaited<ReturnType<typeof uploadReportPhoto>>, location: ReportLocation, description: string) {
-  const normalizedDescription = description.trim();
-  if (!photo.reportId || !Number.isFinite(location.latitude) || location.latitude < -90 || location.latitude > 90 || !Number.isFinite(location.longitude) || location.longitude < -180 || location.longitude > 180 || (location.accuracyMeters !== null && (!Number.isFinite(location.accuracyMeters) || location.accuracyMeters < 0)) || normalizedDescription.length < 10 || normalizedDescription.length > 500 || (location.label !== undefined && location.label.length > 160)) {
-    throw new Error("Data lokasi laporan tidak valid.");
-  }
+  if (!photo.reportId) throw new Error("Foto laporan tidak valid.");
+  const normalizedDescription = validateReportInput(location, description);
   const db = getFirebaseDb();
   const reportRef = doc(db, "reports", photo.reportId);
   const historyRef = doc(collection(reportRef, "statusHistory"));

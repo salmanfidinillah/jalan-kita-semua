@@ -31,6 +31,10 @@ const errorMessages: Record<string, string> = {
   "auth/account-exists-with-different-credential": "Email ini sudah terhubung dengan metode masuk lain.",
   "auth/network-request-failed": "Koneksi gagal. Periksa internet lalu coba lagi.",
   "auth/invalid-api-key": "Konfigurasi Firebase tidak valid.",
+  "auth/unauthorized-domain": "Domain aplikasi belum diizinkan di Firebase Authentication.",
+  "auth/user-disabled": "Akun ini dinonaktifkan. Hubungi administrator.",
+  "auth/invalid-login-credentials": "Email atau password belum benar.",
+  "permission-denied": "Login berhasil, tetapi profile belum dapat dibaca. Periksa Firestore Rules.",
 };
 
 export function AuthForm({ mode }: AuthFormProps) {

@@ -121,8 +121,9 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if resource.data.visibility == 'public' ||
-        (signedIn() && resource.data.reporterId == request.auth.uid) || isAdmin();
+      // Public reads go through the server projection API so private report fields
+      // are never exposed by a direct browser Firestore read.
+      allow read: if signedIn() && resource.data.reporterId == request.auth.uid || isAdmin();
 
       allow create: if signedIn() && validReportCreate();
 
@@ -131,7 +132,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /statusHistory/{historyId} {
-        allow read: if get(/databases/$(database)/documents/reports/$(reportId)).data.visibility == 'public' || isAdmin();
+        allow read: if isAdmin() ||
+          (signedIn() && get(/databases/$(database)/documents/reports/$(reportId)).data.reporterId == request.auth.uid);
         allow create: if isAdmin() ||
           (signedIn() &&
             getAfter(/databases/$(database)/documents/reports/$(reportId)).data.reporterId == request.auth.uid &&

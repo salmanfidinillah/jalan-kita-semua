@@ -19,33 +19,40 @@ export function GoogleRoadMap({ reports, center = DEFAULT_CENTER }: GoogleRoadMa
   const mapRef = useRef<google.maps.Map | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
-  const [mapState, setMapState] = useState<MapState>(() => process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "loading" : "unconfigured");
+  const [mapState, setMapState] = useState<MapState>("loading");
   const [searchMessage, setSearchMessage] = useState("");
 
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey || !mapElement.current) return;
     let isMounted = true;
     let autocomplete: google.maps.places.Autocomplete | null = null;
-    setOptions({ key: apiKey, v: "weekly" });
-    Promise.all([importLibrary("maps"), importLibrary("marker"), importLibrary("places")]).then(() => {
-      if (!mapElement.current || !isMounted) return;
-      const map = new google.maps.Map(mapElement.current, { center, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, mapId: "jalanin-road-map", styles: [{ elementType: "geometry", stylers: [{ color: "#e8eee7" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#5b6468" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#c8dce0" }] }] });
-      mapRef.current = map;
-      infoWindowRef.current = new google.maps.InfoWindow();
-      if (searchElement.current) {
-        autocomplete = new google.maps.places.Autocomplete(searchElement.current, { fields: ["geometry", "name", "formatted_address"], types: ["geocode"] });
-        autocomplete.bindTo("bounds", map);
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete?.getPlace();
-          if (!place?.geometry?.location) { setSearchMessage("Lokasi tidak ditemukan."); return; }
-          map.panTo(place.geometry.location);
-          map.setZoom(15);
-          setSearchMessage(place.formatted_address || place.name || "Lokasi ditemukan");
-        });
-      }
-      if (isMounted) setMapState("ready");
-    }).catch(() => { if (isMounted) setMapState("error"); });
+    async function loadMap() {
+      try {
+        const response = await fetch("/api/runtime-config", { cache: "no-store" });
+        const config = await response.json() as { googleMapsApiKey?: string };
+        const apiKey = config.googleMapsApiKey?.trim();
+        if (!apiKey) { if (isMounted) setMapState("unconfigured"); return; }
+        if (!mapElement.current || !isMounted) return;
+        setOptions({ key: apiKey, v: "weekly" });
+        await Promise.all([importLibrary("maps"), importLibrary("marker"), importLibrary("places")]);
+        if (!mapElement.current || !isMounted) return;
+        const map = new google.maps.Map(mapElement.current, { center, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, mapId: "jalanin-road-map", styles: [{ elementType: "geometry", stylers: [{ color: "#e8eee7" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#5b6468" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#c8dce0" }] }] });
+        mapRef.current = map;
+        infoWindowRef.current = new google.maps.InfoWindow();
+        if (searchElement.current) {
+          autocomplete = new google.maps.places.Autocomplete(searchElement.current, { fields: ["geometry", "name", "formatted_address"], types: ["geocode"] });
+          autocomplete.bindTo("bounds", map);
+          autocomplete.addListener("place_changed", () => {
+            const place = autocomplete?.getPlace();
+            if (!place?.geometry?.location) { setSearchMessage("Lokasi tidak ditemukan."); return; }
+            map.panTo(place.geometry.location);
+            map.setZoom(15);
+            setSearchMessage(place.formatted_address || place.name || "Lokasi ditemukan");
+          });
+        }
+        if (isMounted) setMapState("ready");
+      } catch { if (isMounted) setMapState("error"); }
+    }
+    void loadMap();
     return () => {
       isMounted = false;
       markersRef.current.forEach((marker) => marker.setMap(null));
